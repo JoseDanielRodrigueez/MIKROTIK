@@ -7,7 +7,7 @@ from .forms import PagoForm, FiltroPagos, FiltroPendientes
 from django.contrib.auth.decorators import login_required
 from core.autenticacion import grupo_requerido
 from control_morosidad.views import reconectarClienteEspecifico
-
+from notificaciones.tasks import enviar_notificacion_task, notificar_pago_exitoso_task
 # Create your views here.
 
 # Este metodo se encarga de mostrar la lista de pagos registrados, 
@@ -99,6 +99,18 @@ Tasa: {nuevo_pago.tasa}""",
                 error = False,
                 fecha = timezone.now()
             )
+            try:
+                notificar_pago_exitoso_task.delay(cliente.email, cliente.nombre, montoUSD, cliente.saldo)
+            except Exception as exc:
+                print(f"Error al encolar notificación para el pago de {cliente.nombre}: {exc}")
+                Logs.objects.create(
+                    idPersonal=request.user,
+                    mensaje=f"Error al encolar notificación para el pago de {cliente.nombre}: {exc}",
+                    modulo="Gestion de pagos",
+                    error=True,
+                    fecha=timezone.now()
+                )
+
             return redirect('gestion_pagos',0)
     else:
         form = PagoForm()

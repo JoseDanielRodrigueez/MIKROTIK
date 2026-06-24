@@ -145,3 +145,17 @@ MIKROTIK_HOST = '192.168.88.1'
 MIKROTIK_USER = 'admin'
 MIKROTIK_PASSWORD = '12345'
 MIKROTIK_PORT = 8728
+
+# Configuracion de correo electronico
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'correoinstagram143@gmail.com'
+EMAIL_HOST_PASSWORD = 'gvnk jyzc detl vlmb'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# --- Celery ---
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'     
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

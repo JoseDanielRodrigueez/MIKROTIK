@@ -1,3 +1,3 @@
 from django.test import TestCase
 
-# Create your tests here.
+# pruebas unitarias para la app de notificaciones
