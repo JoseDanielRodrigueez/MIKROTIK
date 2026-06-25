@@ -9,6 +9,7 @@ from django.db.models.functions import TruncDay
 from datetime import timedelta
 from django.core.paginator import Paginator
 from core.autenticacion import grupo_requerido
+from notificaciones.tasks import bienvenida_task
 
 # Este metodo se encarga de mostrar la lista de clientes registrados, 
 # con la posibilidad de aplicar filtros por nombre del cliente y cedula.
@@ -88,6 +89,26 @@ def crear_cliente(request):
                 error=False,
                 fecha=timezone.now()
             )
+
+            try:
+                plan_contratado = cliente.idPlan
+                bienvenida_task.delay(
+                    cliente.nombre, 
+                    cliente.email,
+                    plan_contratado.plan,
+                    plan_contratado.velocidad_subida, 
+                    plan_contratado.velocidad_bajada
+                )
+            except Exception as exc:
+                Logs.objects.create(
+                    idPersonal=request.user,
+                    mensaje=f"""Error al encolar notificación de correo para la bienvenida de {cliente.nombre} ({cliente.cedula})\n
+Excepcion: {exc}
+Posible error con el worker de Celery o Servicio de Redis""",
+                    modulo="Gestion de clientes", 
+                    error=True,
+                    fecha=timezone.now()
+                )
 
             return redirect('gestion_clientes') 
     else:

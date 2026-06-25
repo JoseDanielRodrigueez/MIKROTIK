@@ -7,7 +7,7 @@ from .forms import PagoForm, FiltroPagos, FiltroPendientes
 from django.contrib.auth.decorators import login_required
 from core.autenticacion import grupo_requerido
 from control_morosidad.views import reconectarClienteEspecifico
-from notificaciones.tasks import enviar_notificacion_task, notificar_pago_exitoso_task
+from notificaciones.tasks import pago_exitoso_task
 # Create your views here.
 
 # Este metodo se encarga de mostrar la lista de pagos registrados, 
@@ -100,13 +100,14 @@ Tasa: {nuevo_pago.tasa}""",
                 fecha = timezone.now()
             )
             try:
-                notificar_pago_exitoso_task.delay(cliente.email, cliente.nombre, montoUSD, cliente.saldo)
+                pago_exitoso_task.delay(cliente.email, cliente.nombre, montoUSD, cliente.saldo, timezone.now())
             except Exception as exc:
-                print(f"Error al encolar notificación para el pago de {cliente.nombre}: {exc}")
                 Logs.objects.create(
                     idPersonal=request.user,
-                    mensaje=f"Error al encolar notificación para el pago de {cliente.nombre}: {exc}",
-                    modulo="Gestion de pagos",
+                    mensaje=f"""Error al encolar notificación de correo para el pago de {cliente.nombre} ({cliente.cedula})\n
+Excepcion: {exc}
+Posible error con el worker de Celery o Servicio de Redis""",
+                    modulo="Gestion de pagos", 
                     error=True,
                     fecha=timezone.now()
                 )
