@@ -1,6 +1,6 @@
 """
 en este modulo alojamos una capa de servicio que permite centralizar la logica de los logs de los envios de los correos
-de esta forma capturamos los resultados d las tareas o envios sincronos de forma generica y sin ensucir otras capas de servicio
+de esta forma capturamos los resultados d las tareas o envios sincronos de forma generica y sin ensuciar otras capas de servicio
 """
 import logging
 from django.contrib.auth import get_user_model

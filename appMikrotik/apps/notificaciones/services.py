@@ -3,7 +3,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from core.models import Logs
 
-# En esta capa de servicio solo se aloja la logica de negocio y envio de correo de forma sincrona
+# En esta capa de servicio se aloja la logica de negocio y envio de correo de forma sincrona
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +11,8 @@ class AsuntosNotificaciones():
     "define constantes para mantener los asuntos de los correos"
     PAGO_EXITOSO = "Confirmacion de pago aprobado"
     BIENVENIDA = "Bienvenido a MikroCore, subcripcion activa"
+    SERVICIO_SUSPENDIDO = "MikroCore, servicio suspendido"
+    SERVICIO_REACTIVADO = "MikroCore, servicio reactivado"
 
 # METODOS REUTILZABLES
 
@@ -62,7 +64,7 @@ Att: MikroCore. Gracias por preferir nuestros servicios!
 #METODOS PERSONALIZADOS 
 def notificar_pago_exitoso(nombre_cliente, cliente_email, monto, pendiente, fecha):
     """
-    construye y envia la notificacion de pago exitoso al usuario por su email (de forma sincrona)
+    construye y envia la notificacion de pago exitoso al usuario por su email
     """
 
     asunto = AsuntosNotificaciones.PAGO_EXITOSO
@@ -75,8 +77,8 @@ Fecha: {fecha}"""
         
     return enviar_correo(cliente_email, asunto, mensaje)
 
-def notificar_bienvenida(nombre_cliente, cliente_email, nombre_plan, vel_subida, vel_bajada):
-    "Construye y envia el mensaje de bienvenida al usuario (de forma sincrona)"
+def notificar_bienvenida(nombre_cliente, email_cliente, nombre_plan, vel_subida, vel_bajada):
+    "Construye y envia el mensaje de bienvenida al usuario"
     asunto = AsuntosNotificaciones.BIENVENIDA
     mensaje = _construir_mensaje(
         nombre_cliente,
@@ -85,4 +87,26 @@ Usted ha adquirido el Plan {nombre_plan} que cuenta con una Velocidad de Subida 
 Agradecemos su confianza y le damos la mejor bienvenida. Disfrute de su servicio!"""
     )
     
-    return enviar_correo(cliente_email, asunto, mensaje)
+    return enviar_correo(email_cliente, asunto, mensaje)
+
+def notificar_suspension(nombre_cliente, email_cliente, nombre_plan, pendiente):
+    "Construye y envia el mensaje de suspension de servicio"
+    asunto = AsuntosNotificaciones.SERVICIO_SUSPENDIDO
+    mensaje = _construir_mensaje(
+        nombre_cliente,
+        f"""Su subscripcion a nuestros servicios ha sido suspendida debido a que no ha cancelado el monto mensual de su plan contratado.
+Le recordamos que ud tiene contratado el plan {nombre_plan}, debe cancelar {pendiente}$ para seguir disfrutando de nuestro servicios."""
+    )
+
+    return enviar_correo(email_cliente, asunto, mensaje)
+
+def notificar_reconexion(nombre_cliente, email_cliente):
+    "Construye y envia el mensaje de reconexion de servicio"
+    asunto = AsuntosNotificaciones.SERVICIO_REACTIVADO
+    mensaje = _construir_mensaje(
+        nombre_cliente,
+        f"""Su subscripcion a nuestros servicios ha sido reactivada exitosamente!
+Esperamos que disfrute su servicio y no dude en contactar con nuestro equipo de soporte en caso de cualquier inconveniente."""
+    )
+
+    return enviar_correo(email_cliente, asunto, mensaje)

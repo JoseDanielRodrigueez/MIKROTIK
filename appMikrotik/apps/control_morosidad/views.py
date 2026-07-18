@@ -12,6 +12,7 @@ from .forms import ConfiguracionMorosidadForm, FiltroClientesMorosos
 from core.autenticacion import grupo_requerido
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
+from notificaciones.tasks import servicio_suspendido_task, servicio_reactivado_task
 import calendar
 
 
@@ -57,6 +58,9 @@ def generarFacturaParaCliente(cliente, fechaFactura):
     cliente.saldo += monto
     cliente.estado = 'Pendiente'
     cliente.save(update_fields=['saldo','estado'])
+
+    # notificacion al cliente
+
     
     return f"Generada factura para {cliente.nombre} (Cedula {cliente.cedula}) por $ {monto}"
 
@@ -102,6 +106,26 @@ def suspenderMorosos():
             cliente.estado = 'Desconectado'
             cliente.save(update_fields=['estado'])
             desconexiones.append(f"Desconectando a {cliente.nombre} (Cedula {cliente.cedula}) (Direccion IP: {cliente.direccionIP}) por morosidad.")
+            
+            # Notificacion al cliente de su desconexion
+            try:
+                servicio_suspendido_task(
+                    cliente.nombre,
+                    cliente.email, 
+                    cliente.idPlan.plan,
+                    cliente.saldo
+                )
+            except Exception as e:
+                Logs.objects.create(
+                    idPersonal=system_user,
+                    mensaje=f"""Error al encolar notificación de correo para la suspension del cliente {cliente.nombre} ({cliente.cedula})\n
+Excepcion: {e}
+Posible error con el worker de Celery o Servicio de Redis""",
+                    modulo="Control Morosidad", 
+                    error=True,
+                    fecha=timezone.now()
+                )
+
         else:
             # No cambia el estado, solo se registra el error
             errores.append(f"Error al desconectar a {cliente.nombre} (Cedula {cliente.cedula}) (Direccion IP: {cliente.direccionIP}) por morosidad.")
@@ -133,6 +157,23 @@ def reconectarClienteEspecifico(cliente):
             modulo="Control Morosidad",
             error=False
         )
+        # notificacion al cliente de su reconexion
+        try:
+            servicio_reactivado_task(
+                cliente.nombre,
+                cliente.email
+            )
+        except Exception as e:
+            Logs.objects.create(
+                idPersonal=system_user,
+                mensaje=f"""Error al encolar notificación de correo para la reactivacion del cliente {cliente.nombre} ({cliente.cedula})\n
+Excepcion: {e}
+Posible error con el worker de Celery o Servicio de Redis""",
+                modulo="Control Morosidad", 
+                error=True,
+                fecha=timezone.now()
+            )
+
         return True
     else:
         Logs.objects.create(
@@ -228,6 +269,25 @@ def evaluarMorosidadView(request):
     for cliente in clientesPendientes:
         if suspenderCliente(cliente.direccionIP):
             desconexiones.append(f"Desconectando a {cliente.nombre} (Cedula {cliente.cedula}) (Direccion IP: {cliente.direccionIP}) por morosidad.")
+            # Notificacion al cliente de su desconexion
+            try:
+                servicio_suspendido_task(
+                    cliente.nombre,
+                    cliente.email, 
+                    cliente.idPlan.plan,
+                    cliente.saldo
+                )
+            except Exception as e:
+                Logs.objects.create(
+                    idPersonal=system_user,
+                    mensaje=f"""Error al encolar notificación de correo para la suspension del cliente {cliente.nombre} ({cliente.cedula})\n
+Excepcion: {e}
+Posible error con el worker de Celery o Servicio de Redis""",
+                    modulo="Control Morosidad", 
+                    error=True,
+                    fecha=timezone.now()
+                )
+
         else:
             errorDesconexiones.append(f"Error al desconectar a {cliente.nombre} (Cedula {cliente.cedula}) (Direccion IP: {cliente.direccionIP}) por morosidad.")
 
@@ -236,6 +296,23 @@ def evaluarMorosidadView(request):
     for cliente in clientesPagos:
         if reconectarCliente(cliente.direccionIP):
             reconexiones.append(f"Reconectando a {cliente.nombre} (Cedula {cliente.cedula}) (Direccion IP: {cliente.direccionIP}) por pago.")
+            # notificacion al cliente de su reconexion
+            try:
+                servicio_reactivado_task(
+                    cliente.nombre,
+                    cliente.email
+                )
+            except Exception as e:
+                Logs.objects.create(
+                    idPersonal=system_user,
+                    mensaje=f"""Error al encolar notificación de correo para la reactivacion del cliente {cliente.nombre} ({cliente.cedula})\n
+Excepcion: {e}
+Posible error con el worker de Celery o Servicio de Redis""",
+                    modulo="Control Morosidad", 
+                    error=True,
+                    fecha=timezone.now()
+                )
+
         else:
             errorReconexiones.append(f"Error al reconectar a {cliente.nombre} (Cedula {cliente.cedula}) (Direccion IP: {cliente.direccionIP}) por pago.")
         cliente.estado = 'Solvente'
