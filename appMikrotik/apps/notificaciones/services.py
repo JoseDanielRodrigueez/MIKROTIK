@@ -1,8 +1,7 @@
 import logging
 from django.conf import settings
 from django.core.mail import send_mail
-from core.models import Logs
-
+from datetime import datetime
 # En esta capa de servicio se aloja la logica de negocio y envio de correo de forma sincrona
 
 logger = logging.getLogger(__name__)
@@ -62,7 +61,7 @@ Att: MikroCore. Gracias por preferir nuestros servicios!
 """
 
 #METODOS PERSONALIZADOS 
-def notificar_pago_exitoso(nombre_cliente, cliente_email, monto, pendiente, fecha):
+def notificar_pago_exitoso(nombre_cliente, cliente_email, monto, pendiente, fecha:datetime):
     """
     construye y envia la notificacion de pago exitoso al usuario por su email
     """
@@ -72,7 +71,7 @@ def notificar_pago_exitoso(nombre_cliente, cliente_email, monto, pendiente, fech
         nombre_cliente,
         f"""Su pago realizado por un monto de {monto}$ ha sido procesado exitosamente por nuestro equipo.
 Usted cuenta con un saldo pendiente de {pendiente}$
-Fecha: {fecha}"""
+Fecha: {fecha.strftime("%d/%m/%Y %I:%M:%S %p")}"""
     )
         
     return enviar_correo(cliente_email, asunto, mensaje)
@@ -83,7 +82,7 @@ def notificar_bienvenida(nombre_cliente, email_cliente, nombre_plan, vel_subida,
     mensaje = _construir_mensaje(
         nombre_cliente,
         f"""Su subscripcion a nuestros servicios se encuentra activa.
-Usted ha adquirido el Plan {nombre_plan} que cuenta con una Velocidad de Subida de {vel_subida} Mpbs y {vel_bajada} Mbps de bajada (para descargas)
+Usted ha adquirido el Plan {nombre_plan} que cuenta con una Velocidad de Subida de {vel_subida} Mpbs (Enviar archivos y subir informacion) y {vel_bajada} Mbps de bajada (para descargas y ver contenido)
 Agradecemos su confianza y le damos la mejor bienvenida. Disfrute de su servicio!"""
     )
     

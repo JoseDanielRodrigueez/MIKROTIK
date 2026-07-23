@@ -5,7 +5,7 @@
 from celery import shared_task, Task
 from notificaciones.services import AsuntosNotificaciones, enviar_correo, notificar_pago_exitoso, notificar_bienvenida, notificar_suspension, notificar_reconexion
 from .logs_utils import registrar_log_notificacion
-
+from datetime import datetime
 class RetryTask(Task):
     autoretry_for = (Exception,)
     retry_kwargs = {"max_retries": 3, "countdown": 45}
@@ -15,8 +15,8 @@ class RetryTask(Task):
 def enviar_correo_task(self, email_cliente, asunto, mensaje, remitente=None):
     """Gestiona la tarea asincrona para enviar un correo generico"""
     try:
-        if email_cliente.strip():
-            return
+        if not email_cliente or not email_cliente.strip():
+            return 'Email invalido'
         
         exito = enviar_correo(
             email_cliente, 
@@ -31,11 +31,11 @@ def enviar_correo_task(self, email_cliente, asunto, mensaje, remitente=None):
 
 
 @shared_task(bind=True, base=RetryTask, name='notificaciones.notificar_pago_exitoso')
-def pago_exitoso_task(self, email_cliente, nombre_cliente, monto, pendiente, fecha):
+def pago_exitoso_task(self, email_cliente, nombre_cliente, monto, pendiente, fecha:datetime):
     """Gestiona la tarea asincrona para notificar el pgo exitoso"""
     try:
-        if email_cliente.strip():
-            return
+        if not email_cliente or not email_cliente.strip():
+            return 'Email invalido'
         
         exito = notificar_pago_exitoso(
             nombre_cliente, email_cliente, 
@@ -66,8 +66,8 @@ def pago_exitoso_task(self, email_cliente, nombre_cliente, monto, pendiente, fec
 def bienvenida_task(self, nombre_cliente, email_cliente, nombre_plan, vel_sub, vel_baj):
     "gestiona la tarea asincrona para notificar la bienvenida al usuario al registrarse"
     try:
-        if email_cliente.strip():
-            return
+        if not email_cliente or not email_cliente.strip():
+            return 'Email invalido'
         
         exito = notificar_bienvenida(
             nombre_cliente, 
@@ -97,8 +97,8 @@ def bienvenida_task(self, nombre_cliente, email_cliente, nombre_plan, vel_sub, v
 def servicio_suspendido_task(self, nombre_cliente, email_cliente, nombre_plan, saldo_pendiente):
     """Gestiona la tarea asincrona para notificar al cliente que si servicio se ha suspendido"""
     try:
-        if email_cliente.strip():
-            return
+        if not email_cliente or not email_cliente.strip():
+            return 'Email invalido'
         
         exito = notificar_suspension(
             nombre_cliente,
@@ -126,8 +126,8 @@ def servicio_suspendido_task(self, nombre_cliente, email_cliente, nombre_plan, s
 def servicio_reactivado_task(self, nombre_cliente, email_cliente):
     "Gestiona la tarea asincrona paraa el notificar al cliente que ha sido reconectado nuevamente"
     try:
-        if email_cliente.strip():
-            return
+        if not email_cliente or not email_cliente.strip():
+            return 'Email invalido'
         
         exito = notificar_reconexion(
             nombre_cliente,
@@ -138,6 +138,7 @@ def servicio_reactivado_task(self, nombre_cliente, email_cliente):
             AsuntosNotificaciones.SERVICIO_REACTIVADO,
             exito
         )
+        return {"status": "OK" if exito else "FAILED"}
     except Exception as exc:
         # capturamos algun error inesperado
         registrar_log_notificacion(
